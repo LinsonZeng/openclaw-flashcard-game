@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oxford English Flashcards</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Oxford English Flashcards</h1>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <span id="progressText">0/0</span>
+            </div>
+        </header>
+
+        <main class="game-area">
+            <div class="flashcard-container">
+                <div class="flashcard" id="flashcard">
+                    <div class="flashcard-front" id="cardFront">
+                        <img id="flashcardImage" src="" alt="Flashcard Image" class="flashcard-image" style="display:none;">
+                        <div class="word" id="englishWord">Loading...</div>
+                        <div class="hint">Tap to flip</div>
+                    </div>
+                    <div class="flashcard-back" id="cardBack">
+                        <img id="flashcardImageBack" src="" alt="Flashcard Image" class="flashcard-image" style="display:none;">
+                        <div class="word" id="chineseMeaning">加载中...</div>
+                        <div class="hint">Tap to flip</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="prevBtn" class="nav-btn">← Previous</button>
+                <div class="action-buttons">
+                    <button id="againBtn" class="action-btn again">Again</button>
+                    <button id="hardBtn" class="action-btn hard">Hard</button>
+                    <button id="goodBtn" class="action-btn good">Good</button>
+                    <button id="easyBtn" class="action-btn easy">Easy</button>
+                </div>
+                <button id="nextBtn" class="nav-btn">Next →</button>
+            </div>
+        </main>
+
+        <footer>
+            <button id="resetBtn">Reset Progress</button>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
