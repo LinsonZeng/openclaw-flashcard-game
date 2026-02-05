@@ -24,6 +24,7 @@ class FlashcardGame {
                 this.updateDisplay();
             });
         this.bindEvents();
+        this.initializePrevButton();
     }
 
     initializeElements() {
@@ -239,10 +240,10 @@ class FlashcardGame {
         if (Math.abs(deltaX) > swipeThreshold || Math.abs(deltaY) > swipeThreshold) {
             // Determine primary direction
             if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                // Horizontal swipe
+                // Horizontal swipe - both left and right go to next card
                 if (deltaX < -swipeThreshold) {
-                    // Swipe left - previous card
-                    this.animateCardOut('left', () => this.previousCard());
+                    // Swipe left - next card
+                    this.animateCardOut('left', () => this.nextCard());
                 } else if (deltaX > swipeThreshold) {
                     // Swipe right - next card
                     this.animateCardOut('right', () => this.nextCard());
@@ -314,8 +315,9 @@ class FlashcardGame {
 
         if (Math.abs(deltaX) > swipeThreshold || Math.abs(deltaY) > swipeThreshold) {
             if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Horizontal swipe - both left and right go to next card
                 if (deltaX < -swipeThreshold) {
-                    this.animateCardOut('left', () => this.previousCard());
+                    this.animateCardOut('left', () => this.nextCard());
                 } else if (deltaX > swipeThreshold) {
                     this.animateCardOut('right', () => this.nextCard());
                 }
@@ -419,7 +421,7 @@ class FlashcardGame {
         switch (e.key) {
             case 'ArrowLeft':
                 e.preventDefault();
-                this.previousCard();
+                this.nextCard(); // Changed: left arrow now goes to next card
                 break;
             case 'ArrowRight':
                 e.preventDefault();
@@ -437,6 +439,10 @@ class FlashcardGame {
             case 'Enter':
                 e.preventDefault();
                 this.flipCard();
+                break;
+            case 'Backspace':
+                e.preventDefault();
+                this.previousCardWithAnimation(); // Use backspace for previous card
                 break;
         }
     }
@@ -475,7 +481,13 @@ class FlashcardGame {
         const card = this.flashcards[this.currentIndex];
         if (!card) return;
 
-        if (card.imagePath) {
+        // Check if imagePath is valid (not empty, not a local file path, and is a valid URL)
+        const hasValidImage = card.imagePath &&
+            card.imagePath.trim() !== '' &&
+            !card.imagePath.startsWith('/Volumes') &&
+            (card.imagePath.startsWith('http') || card.imagePath.startsWith('/'));
+
+        if (hasValidImage) {
             this.flashcardImage.src = card.imagePath;
             this.flashcardImage.style.display = 'block';
             this.englishElement.style.display = 'none';
@@ -519,6 +531,144 @@ class FlashcardGame {
         this.currentIndex--;
         this.resetCardState();
         this.updateDisplay();
+    }
+
+    // Initialize the previous button at the bottom
+    initializePrevButton() {
+        // Create the previous button container
+        this.prevButtonContainer = document.createElement('div');
+        this.prevButtonContainer.className = 'prev-button-container';
+        this.prevButtonContainer.id = 'prevButtonContainer';
+        // Initial hidden state is controlled by CSS (no 'visible' class)
+
+        // Create the button
+        const prevButton = document.createElement('button');
+        prevButton.className = 'prev-card-button';
+        prevButton.id = 'prevCardButton';
+        prevButton.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            <span>上一张</span>
+        `;
+
+        prevButton.addEventListener('click', () => this.previousCardWithAnimation());
+
+        this.prevButtonContainer.appendChild(prevButton);
+
+        // Add to body for fixed positioning - doesn't affect other layout
+        document.body.appendChild(this.prevButtonContainer);
+    }
+
+    // Previous card with fly-back animation
+    previousCardWithAnimation() {
+        if (this.isLoading || this.currentIndex <= 0) {
+            if (this.currentIndex <= 0) {
+                this.showToast('已经是第一张了');
+            }
+            return;
+        }
+
+        // Animate card flying back from left
+        this.animateCardFlyBack(() => {
+            this.currentIndex--;
+            this.resetCardState();
+            this.updateDisplay();
+        });
+    }
+
+    // Animate card flying back from the left side
+    animateCardFlyBack(callback) {
+        // First, set up the card off-screen to the left
+        this.cardElement.style.transition = 'none';
+        this.cardElement.style.transform = 'translate(-150%, 0) rotate(-30deg)';
+        this.cardElement.style.opacity = '0';
+
+        // Force reflow
+        void this.cardElement.offsetWidth;
+
+        // Execute the callback to update the card content
+        callback();
+
+        // Then animate flying back to center
+        setTimeout(() => {
+            this.cardElement.classList.add('flying-back');
+            this.cardElement.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease';
+            this.cardElement.style.transform = 'translate(0, 0) rotate(0deg)';
+            this.cardElement.style.opacity = '1';
+
+            setTimeout(() => {
+                this.cardElement.classList.remove('flying-back');
+                this.cardElement.style.transition = '';
+            }, 500);
+        }, 50);
+    }
+
+    // Update prev button visibility
+    updatePrevButtonVisibility() {
+        if (this.prevButtonContainer) {
+            if (this.currentIndex > 0) {
+                this.prevButtonContainer.classList.add('visible');
+            } else {
+                this.prevButtonContainer.classList.remove('visible');
+            }
+        }
+    }
+
+    // Update card stack visual based on remaining cards
+    updateCardStackVisual() {
+        const remainingCards = this.flashcards.length - this.currentIndex;
+        const maxVisibleStack = 10;
+        const visibleStackCount = Math.min(remainingCards, maxVisibleStack);
+
+        // Get or create stack cards container
+        let stackCardsContainer = document.getElementById('dynamicStackCards');
+        if (!stackCardsContainer) {
+            stackCardsContainer = document.createElement('div');
+            stackCardsContainer.id = 'dynamicStackCards';
+            stackCardsContainer.style.position = 'absolute';
+            stackCardsContainer.style.width = '100%';
+            stackCardsContainer.style.height = '100%';
+            stackCardsContainer.style.pointerEvents = 'none';
+
+            // Insert before the main flashcard
+            if (this.cardStack) {
+                this.cardStack.insertBefore(stackCardsContainer, this.cardElement);
+            }
+        }
+
+        // Clear existing stack cards
+        stackCardsContainer.innerHTML = '';
+
+        // Create stack cards based on remaining cards (show at most maxVisibleStack - 1 behind the main card)
+        const stackCount = Math.min(visibleStackCount - 1, 9); // -1 because main card is separate
+
+        for (let i = stackCount; i > 0; i--) {
+            const stackCard = document.createElement('div');
+            stackCard.className = 'stack-card dynamic-stack';
+
+            // Calculate visual properties - enhanced for better visibility like reference image
+            const offset = i * 6; // 6px offset per card for thicker stack appearance
+            const scale = 1 - (i * 0.005); // Very slight scale reduction to create depth
+            const opacity = 1 - (i * 0.03); // More gradual opacity reduction for visibility
+
+            stackCard.style.cssText = `
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
+                border-radius: 20px;
+                box-shadow: 0 ${3 + i}px ${10 + i * 3}px rgba(0, 0, 0, ${0.1 + i * 0.02}),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+                transform: translateY(${offset}px) scale(${scale});
+                opacity: ${opacity};
+                z-index: ${-i};
+                border: 1px solid rgba(200, 200, 200, 0.3);
+                border-bottom: 2px solid rgba(150, 150, 150, 0.2);
+            `;
+
+            stackCardsContainer.appendChild(stackCard);
+        }
     }
 
     addToVocabulary() {
@@ -587,6 +737,8 @@ class FlashcardGame {
         }
 
         this.updateVocabIndicator();
+        this.updatePrevButtonVisibility();
+        this.updateCardStackVisual();
     }
 
     updateVocabIndicator() {

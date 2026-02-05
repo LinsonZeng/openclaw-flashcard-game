@@ -31,14 +31,12 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(
-        135deg,
-        #4a5568 0%,
-        #667eea 25%,
-        #764ba2 50%,
-        #f093fb 75%,
-        #a78bfa 100%
-    );
+    background: linear-gradient(135deg,
+            #4a5568 0%,
+            #667eea 25%,
+            #764ba2 50%,
+            #f093fb 75%,
+            #a78bfa 100%);
     background-size: 400% 400%;
     animation: gradientShift 15s ease infinite;
     z-index: -1;
@@ -57,9 +55,17 @@ body {
 }
 
 @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 /* Top navigation */
@@ -163,13 +169,31 @@ body {
 }
 
 @keyframes hintPulseLeft {
-    0%, 100% { transform: translateX(0); opacity: 1; }
-    50% { transform: translateX(-5px); opacity: 0.6; }
+
+    0%,
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    50% {
+        transform: translateX(-5px);
+        opacity: 0.6;
+    }
 }
 
 @keyframes hintPulseRight {
-    0%, 100% { transform: translateX(0); opacity: 1; }
-    50% { transform: translateX(5px); opacity: 0.6; }
+
+    0%,
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    50% {
+        transform: translateX(5px);
+        opacity: 0.6;
+    }
 }
 
 /* Card stack container */
@@ -226,7 +250,7 @@ body {
     height: 100%;
     background: linear-gradient(145deg, #ffffff 0%, #f8f8f8 100%);
     border-radius: 20px;
-    box-shadow: 
+    box-shadow:
         0 15px 35px rgba(0, 0, 0, 0.15),
         0 5px 15px rgba(0, 0, 0, 0.08),
         inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -306,9 +330,19 @@ body {
 }
 
 @keyframes rotateHint {
-    0%, 100% { transform: rotate(0deg); }
-    25% { transform: rotate(-10deg); }
-    75% { transform: rotate(10deg); }
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(-10deg);
+    }
+
+    75% {
+        transform: rotate(10deg);
+    }
 }
 
 /* Magic reveal effect */
@@ -336,9 +370,11 @@ body {
         height: 0;
         opacity: 1;
     }
+
     50% {
         opacity: 1;
     }
+
     100% {
         width: 600px;
         height: 600px;
@@ -376,8 +412,17 @@ body {
 }
 
 @keyframes discardPulse {
-    0%, 100% { transform: translateY(0); opacity: 1; }
-    50% { transform: translateY(5px); opacity: 0.6; }
+
+    0%,
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    50% {
+        transform: translateY(5px);
+        opacity: 0.6;
+    }
 }
 
 /* Vocabulary indicator */
@@ -454,19 +499,19 @@ body {
         width: 260px;
         height: 370px;
     }
-    
+
     .word {
         font-size: 1.75rem;
     }
-    
+
     .swipe-hint {
         font-size: 0.7rem;
     }
-    
+
     .hint-left {
         left: 4px;
     }
-    
+
     .hint-right {
         right: 4px;
     }
@@ -485,7 +530,105 @@ body {
 }
 
 @keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Hide static stack cards - use dynamic stack instead */
+.stack-card.stack-1,
+.stack-card.stack-2,
+.stack-card.stack-3,
+.stack-card.stack-4 {
+    display: none;
+}
+
+/* Previous button container - use fixed positioning to not affect card layout */
+.prev-button-container {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.prev-button-container.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Previous card button */
+.prev-card-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 25px;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.prev-card-button:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+}
+
+.prev-card-button:active {
+    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.prev-card-button svg {
+    transition: transform 0.3s ease;
+}
+
+.prev-card-button:hover svg {
+    transform: translateX(-3px);
+}
+
+/* Flying back animation for card */
+.flashcard.flying-back {
+    z-index: 10;
+}
+
+/* Dynamic stack card styles - enhanced for visibility */
+.stack-card.dynamic-stack {
+    pointer-events: none;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Responsive adjustments for prev button */
+@media (max-height: 700px) {
+    .prev-button-container {
+        bottom: 80px;
+    }
+}
+
+@media (max-height: 600px) {
+    .prev-button-container {
+        bottom: 60px;
+    }
 }
