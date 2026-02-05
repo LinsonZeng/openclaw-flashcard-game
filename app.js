@@ -87,7 +87,9 @@ class FlashcardGame {
     async fetchFlashcardsFromBackend() {
         try {
             this.setLoadingState(true);
-            const response = await fetch('http://localhost:9876/api/flashcards');
+            // Update to use Firebase Functions URL
+            const firebaseFunctionsUrl = 'https://us-central1-gen-lang-client-0530317861.cloudfunctions.net/api';
+            const response = await fetch(`${firebaseFunctionsUrl}/flashcards`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -109,7 +111,9 @@ class FlashcardGame {
 
     async fetchImageList() {
         try {
-            const response = await fetch('http://localhost:9876/api/images');
+            // Update to use Firebase Functions URL
+            const firebaseFunctionsUrl = 'https://us-central1-gen-lang-client-0530317861.cloudfunctions.net/api';
+            const response = await fetch(`${firebaseFunctionsUrl}/images`);
             if (response.ok) {
                 const imageData = await response.json();
                 console.log(`Found ${imageData.count} images in directory`);
@@ -658,6 +662,97 @@ class FlashcardGame {
             this.saveVocabularyList();
             this.updateVocabIndicator();
             this.showToast('生词本已清空');
+        }
+    }
+
+    // Rate a flashcard and update difficulty
+    async rateFlashcard(cardId, rating) {
+        try {
+            const firebaseFunctionsUrl = 'https://us-central1-gen-lang-client-0530317861.cloudfunctions.net/api';
+            const response = await fetch(`${firebaseFunctionsUrl}/flashcards/${cardId}/rate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ rating })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log(`Rated flashcard ${cardId} with rating ${rating}`);
+
+            // Update the local card data
+            const cardIndex = this.flashcards.findIndex(card => card.id === cardId);
+            if (cardIndex !== -1) {
+                this.flashcards[cardIndex].difficulty = rating;
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Error rating flashcard:', error);
+            // Update locally anyway in case of network failure
+            const cardIndex = this.flashcards.findIndex(card => card.id === cardId);
+            if (cardIndex !== -1) {
+                this.flashcards[cardIndex].difficulty = rating;
+            }
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Get user progress
+    async getUserProgress() {
+        try {
+            const firebaseFunctionsUrl = 'https://us-central1-gen-lang-client-0530317861.cloudfunctions.net/api';
+            const response = await fetch(`${firebaseFunctionsUrl}/progress`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error getting user progress:', error);
+            return { error: error.message };
+        }
+    }
+
+    // Reset user progress
+    async resetProgress() {
+        try {
+            const firebaseFunctionsUrl = 'https://us-central1-gen-lang-client-0530317861.cloudfunctions.net/api';
+            const response = await fetch(`${firebaseFunctionsUrl}/progress/reset`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log('Progress reset successfully');
+            return data;
+        } catch (error) {
+            console.error('Error resetting progress:', error);
+            return { error: error.message };
+        }
+    }
+
+    // Get practice flashcards by difficulty level
+    async getPracticeFlashcards(difficultyLevel) {
+        try {
+            const firebaseFunctionsUrl = 'https://us-central1-gen-lang-client-0530317861.cloudfunctions.net/api';
+            const response = await fetch(`${firebaseFunctionsUrl}/flashcards/practice/${difficultyLevel}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error getting practice flashcards:', error);
+            return { error: error.message };
         }
     }
 }
