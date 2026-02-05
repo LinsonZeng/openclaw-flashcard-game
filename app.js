@@ -1,14 +1,23 @@
-// Oxford English Flashcards Game - Enhanced Version
+// Oxford English Flashcards Game - Stacked Card Version with Gesture Controls
 class FlashcardGame {
     constructor() {
         this.flashcards = [];
         this.currentIndex = 0;
         this.imageBasePath = '/Volumes/138XXXX0377/下载/牛津树/05. 牛津闪卡1000张+音频/闪片/牛津闪卡 (1)/';
         this.imageExtension = '.jpg';
-        this.isFrontVisible = true; // Track which side is currently visible
-        this.isLoading = false; // Track loading state
-        
+        this.isFrontVisible = true;
+        this.isLoading = false;
+        this.vocabularyList = []; // 生词列表
+
+        // Touch tracking
+        this.touchStartX = 0;
+        this.touchStartY = 0;
+        this.touchCurrentX = 0;
+        this.touchCurrentY = 0;
+        this.isSwiping = false;
+
         this.initializeElements();
+        this.loadVocabularyList();
         this.fetchFlashcardsFromBackend()
             .then(() => {
                 this.loadProgress();
@@ -16,42 +25,65 @@ class FlashcardGame {
             });
         this.bindEvents();
     }
-    
+
     initializeElements() {
         this.cardElement = document.getElementById('flashcard');
-        this.frontElement = document.getElementById('cardFront');
-        this.backElement = document.getElementById('cardBack');
+        this.cardContent = document.getElementById('cardContent');
         this.englishElement = document.getElementById('englishWord');
         this.chineseElement = document.getElementById('chineseMeaning');
         this.progressFill = document.getElementById('progressFill');
         this.progressText = document.getElementById('progressText');
-        this.prevBtn = document.getElementById('prevBtn');
-        this.nextBtn = document.getElementById('nextBtn');
-        this.againBtn = document.getElementById('againBtn');
-        this.hardBtn = document.getElementById('hardBtn');
-        this.goodBtn = document.getElementById('goodBtn');
-        this.easyBtn = document.getElementById('easyBtn');
-        this.resetBtn = document.getElementById('resetBtn');
+        this.flipHint = document.getElementById('flipHint');
+        this.magicReveal = document.getElementById('magicReveal');
         this.flashcardImage = document.getElementById('flashcardImage');
         this.flashcardImageBack = document.getElementById('flashcardImageBack');
-        
-        // Disable buttons while loading
+        this.backBtn = document.getElementById('backBtn');
+        this.closeBtn = document.getElementById('closeBtn');
+        this.discardHint = document.getElementById('discardHint');
+        this.vocabIndicator = document.getElementById('vocabIndicator');
+        this.vocabCount = document.getElementById('vocabCount');
+        this.cardStack = document.getElementById('cardStack');
+
+        // Create swipe overlays
+        this.createSwipeOverlays();
+
+        // Create toast element
+        this.createToast();
+
         this.setLoadingState(true);
     }
-    
-    setLoadingState(isLoading) {
-        this.isLoading = isLoading;
-        const buttons = [this.prevBtn, this.nextBtn, this.againBtn, this.hardBtn, this.goodBtn, this.easyBtn];
-        buttons.forEach(btn => {
-            btn.disabled = isLoading;
-            if (isLoading) {
-                btn.style.opacity = '0.6';
-            } else {
-                btn.style.opacity = '1';
-            }
+
+    createSwipeOverlays() {
+        const overlays = ['left', 'right', 'down'];
+        overlays.forEach(direction => {
+            const overlay = document.createElement('div');
+            overlay.className = `swipe-overlay ${direction}`;
+            overlay.id = `overlay-${direction}`;
+            this.cardElement.appendChild(overlay);
         });
     }
-    
+
+    createToast() {
+        this.toast = document.createElement('div');
+        this.toast.className = 'toast';
+        document.body.appendChild(this.toast);
+    }
+
+    showToast(message, duration = 1500) {
+        this.toast.textContent = message;
+        this.toast.classList.add('show');
+        setTimeout(() => {
+            this.toast.classList.remove('show');
+        }, duration);
+    }
+
+    setLoadingState(isLoading) {
+        this.isLoading = isLoading;
+        if (this.englishElement) {
+            this.englishElement.classList.toggle('loading', isLoading);
+        }
+    }
+
     async fetchFlashcardsFromBackend() {
         try {
             this.setLoadingState(true);
@@ -61,398 +93,582 @@ class FlashcardGame {
             }
             const data = await response.json();
             this.flashcards = data;
-            
-            // If we have image capability, fetch image list
+
             await this.fetchImageList();
-            
+
             console.log(`Loaded ${this.flashcards.length} flashcards from backend`);
             this.setLoadingState(false);
             return data;
         } catch (error) {
             console.error('Error fetching flashcards from backend:', error);
-            // Fallback to sample data
             this.createSampleFlashcards();
             this.setLoadingState(false);
             return this.flashcards;
         }
     }
-    
+
     async fetchImageList() {
         try {
             const response = await fetch('http://localhost:9876/api/images');
             if (response.ok) {
                 const imageData = await response.json();
                 console.log(`Found ${imageData.count} images in directory`);
-                
-                // Assign images to flashcards if possible
                 this.assignImagesToFlashcards(imageData.images);
             }
         } catch (error) {
             console.warn('Could not fetch image list:', error);
         }
     }
-    
+
     assignImagesToFlashcards(imageFiles) {
-        // Assign images to flashcards based on index
         this.flashcards.forEach((card, index) => {
             if (index < imageFiles.length) {
                 card.imagePath = `${this.imageBasePath}${imageFiles[index]}`;
             }
         });
     }
-    
+
     createSampleFlashcards() {
-        // Sample flashcard data as fallback
         this.flashcards = [
-            { id: 1, english: "abandon", chinese: "放弃；抛弃", imagePath: "", difficulty: 0 },
-            { id: 2, english: "benefit", chinese: "利益；好处；有益于", imagePath: "", difficulty: 0 },
-            { id: 3, english: "consequence", chinese: "结果；后果", imagePath: "", difficulty: 0 },
-            { id: 4, english: "define", chinese: "定义；解释", imagePath: "", difficulty: 0 },
-            { id: 5, english: "emphasize", chinese: "强调；着重", imagePath: "", difficulty: 0 },
-            { id: 6, english: "feature", chinese: "特征；特色；以...为特色", imagePath: "", difficulty: 0 },
-            { id: 7, english: "generate", chinese: "产生；生成", imagePath: "", difficulty: 0 },
-            { id: 8, english: "highlight", chinese: "突出；强调；亮点", imagePath: "", difficulty: 0 },
-            { id: 9, english: "implement", chinese: "实施；执行", imagePath: "", difficulty: 0 },
-            { id: 10, english: "justify", chinese: "证明...有理；为...辩护", imagePath: "", difficulty: 0 },
-            { id: 11, english: "maintain", chinese: "维持；保持；维修", imagePath: "", difficulty: 0 },
-            { id: 12, english: "occur", chinese: "发生；出现", imagePath: "", difficulty: 0 },
-            { id: 13, english: "policy", chinese: "政策；方针；保险单", imagePath: "", difficulty: 0 },
-            { id: 14, english: "primary", chinese: "主要的；初级的；基本的", imagePath: "", difficulty: 0 },
-            { id: 15, english: "principle", chinese: "原理；原则；道德准则", imagePath: "", difficulty: 0 }
+            { id: 1, english: "SERENDIPITY", chinese: "意外发现美好事物的运气", imagePath: "", difficulty: 0 },
+            { id: 2, english: "EPHEMERAL", chinese: "短暂的；瞬息的", imagePath: "", difficulty: 0 },
+            { id: 3, english: "LUMINOUS", chinese: "发光的；明亮的", imagePath: "", difficulty: 0 },
+            { id: 4, english: "RESILIENCE", chinese: "韧性；恢复力", imagePath: "", difficulty: 0 },
+            { id: 5, english: "WANDERLUST", chinese: "漫游癖；旅行欲", imagePath: "", difficulty: 0 },
+            { id: 6, english: "MELLIFLUOUS", chinese: "悦耳的；流畅的", imagePath: "", difficulty: 0 },
+            { id: 7, english: "PETRICHOR", chinese: "雨后泥土的芬芳", imagePath: "", difficulty: 0 },
+            { id: 8, english: "SONDER", chinese: "意识到陌生人也有复杂人生", imagePath: "", difficulty: 0 },
+            { id: 9, english: "AURORA", chinese: "极光；曙光", imagePath: "", difficulty: 0 },
+            { id: 10, english: "ETHEREAL", chinese: "飘渺的；超凡的", imagePath: "", difficulty: 0 },
         ];
     }
-    
+
     bindEvents() {
-        // Card flip on click/tap
-        this.cardElement.addEventListener('click', () => this.flipCard());
-        
-        // Navigation buttons
-        this.prevBtn.addEventListener('click', () => this.previousCard());
-        this.nextBtn.addEventListener('click', () => this.nextCard());
-        
-        // Difficulty buttons
-        this.againBtn.addEventListener('click', () => this.rateCard(0));
-        this.hardBtn.addEventListener('click', () => this.rateCard(1));
-        this.goodBtn.addEventListener('click', () => this.rateCard(2));
-        this.easyBtn.addEventListener('click', () => this.rateCard(3));
-        
-        // Reset button
-        this.resetBtn.addEventListener('click', () => this.resetProgress());
-        
-        // Touch events for swipe gestures
-        let touchStartX = 0;
-        let touchStartY = 0;
-        
-        this.cardElement.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-            e.preventDefault(); // Prevent default to ensure swipe is captured
-        });
-        
-        this.cardElement.addEventListener('touchend', (e) => {
-            const touchEndX = e.changedTouches[0].clientX;
-            const touchEndY = e.changedTouches[0].clientY;
-            
-            const diffX = touchStartX - touchEndX;
-            const diffY = touchStartY - touchEndY;
-            
-            // Only consider horizontal swipes if they're significantly larger than vertical
-            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
-                if (diffX > 0) {
-                    // Swipe left - next card
-                    this.nextCard();
-                } else {
-                    // Swipe right - previous card
-                    this.previousCard();
-                }
-            } else if (Math.abs(diffY) > 30) {
-                // Vertical swipe - flip card
+        // Card tap to flip
+        this.cardElement.addEventListener('click', (e) => {
+            if (!this.isSwiping) {
                 this.flipCard();
             }
-            
-            e.preventDefault();
         });
-        
-        // Prevent scrolling when touching the card area
-        this.cardElement.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-        }, { passive: false });
-        
+
+        // Touch events for swipe gestures
+        this.cardElement.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+        this.cardElement.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+        this.cardElement.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+        this.cardElement.addEventListener('touchcancel', (e) => this.handleTouchEnd(e), { passive: false });
+
+        // Mouse events for desktop testing
+        this.cardElement.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+
+        // Navigation buttons
+        if (this.backBtn) {
+            this.backBtn.addEventListener('click', () => this.previousCard());
+        }
+        if (this.closeBtn) {
+            this.closeBtn.addEventListener('click', () => {
+                if (confirm('确定要退出吗？')) {
+                    window.history.back();
+                }
+            });
+        }
+
         // Keyboard navigation
-        document.addEventListener('keydown', (e) => {
-            if (this.isLoading) return; // Don't respond to keys while loading
-            
-            switch(e.key) {
-                case 'ArrowLeft':
-                    e.preventDefault();
-                    this.previousCard();
-                    break;
-                case 'ArrowRight':
-                    e.preventDefault();
-                    this.nextCard();
-                    break;
-                case ' ':
-                    e.preventDefault();
-                    this.flipCard();
-                    break;
-                case '1':
-                    e.preventDefault();
-                    this.rateCard(0);
-                    break;
-                case '2':
-                    e.preventDefault();
-                    this.rateCard(1);
-                    break;
-                case '3':
-                    e.preventDefault();
-                    this.rateCard(2);
-                    break;
-                case '4':
-                    e.preventDefault();
-                    this.rateCard(3);
-                    break;
-            }
-        });
+        document.addEventListener('keydown', (e) => this.handleKeydown(e));
     }
-    
-    flipCard() {
+
+    handleTouchStart(e) {
         if (this.isLoading) return;
-        
-        this.cardElement.classList.toggle('flipped');
-        this.isFrontVisible = !this.isFrontVisible;
-        
-        // Update image visibility based on card side
-        if (this.isFrontVisible) {
-            this.showFrontImage();
-        } else {
-            this.showBackImage();
+
+        const touch = e.touches[0];
+        this.touchStartX = touch.clientX;
+        this.touchStartY = touch.clientY;
+        this.touchCurrentX = touch.clientX;
+        this.touchCurrentY = touch.clientY;
+        this.isSwiping = false;
+
+        this.cardElement.classList.add('swiping');
+        this.cardElement.classList.remove('returning', 'flying-out');
+    }
+
+    handleTouchMove(e) {
+        if (this.isLoading) return;
+        e.preventDefault();
+
+        const touch = e.touches[0];
+        this.touchCurrentX = touch.clientX;
+        this.touchCurrentY = touch.clientY;
+
+        const deltaX = this.touchCurrentX - this.touchStartX;
+        const deltaY = this.touchCurrentY - this.touchStartY;
+
+        // Start swiping if moved enough
+        if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+            this.isSwiping = true;
+        }
+
+        if (this.isSwiping) {
+            // Apply transform with damping
+            const rotation = deltaX * 0.05;
+            this.cardElement.style.transform = `translate(${deltaX}px, ${deltaY}px) rotate(${rotation}deg)`;
+
+            // Update overlay opacity based on swipe direction
+            this.updateSwipeOverlays(deltaX, deltaY);
         }
     }
-    
-    showFrontImage() {
-        if (this.flashcards[this.currentIndex]?.imagePath) {
-            this.flashcardImage.src = this.flashcards[this.currentIndex].imagePath;
+
+    handleTouchEnd(e) {
+        if (this.isLoading) return;
+
+        this.cardElement.classList.remove('swiping');
+
+        const deltaX = this.touchCurrentX - this.touchStartX;
+        const deltaY = this.touchCurrentY - this.touchStartY;
+
+        // Hide overlays
+        this.hideSwipeOverlays();
+
+        // Determine swipe direction
+        const swipeThreshold = 80;
+
+        if (Math.abs(deltaX) > swipeThreshold || Math.abs(deltaY) > swipeThreshold) {
+            // Determine primary direction
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Horizontal swipe
+                if (deltaX < -swipeThreshold) {
+                    // Swipe left - previous card
+                    this.animateCardOut('left', () => this.previousCard());
+                } else if (deltaX > swipeThreshold) {
+                    // Swipe right - next card
+                    this.animateCardOut('right', () => this.nextCard());
+                }
+            } else {
+                // Vertical swipe
+                if (deltaY > swipeThreshold) {
+                    // Swipe down - add to vocabulary
+                    this.animateCardOut('down', () => this.addToVocabulary());
+                } else if (deltaY < -swipeThreshold) {
+                    // Swipe up - next card
+                    this.animateCardOut('up', () => this.nextCard());
+                }
+            }
+        } else {
+            // Return card to original position
+            this.returnCard();
+        }
+
+        this.isSwiping = false;
+    }
+
+    handleMouseDown(e) {
+        if (this.isLoading) return;
+
+        this.touchStartX = e.clientX;
+        this.touchStartY = e.clientY;
+        this.touchCurrentX = e.clientX;
+        this.touchCurrentY = e.clientY;
+        this.isMouseDown = true;
+        this.isSwiping = false;
+
+        this.cardElement.classList.add('swiping');
+        this.cardElement.classList.remove('returning', 'flying-out');
+    }
+
+    handleMouseMove(e) {
+        if (!this.isMouseDown || this.isLoading) return;
+
+        this.touchCurrentX = e.clientX;
+        this.touchCurrentY = e.clientY;
+
+        const deltaX = this.touchCurrentX - this.touchStartX;
+        const deltaY = this.touchCurrentY - this.touchStartY;
+
+        if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+            this.isSwiping = true;
+        }
+
+        if (this.isSwiping) {
+            const rotation = deltaX * 0.05;
+            this.cardElement.style.transform = `translate(${deltaX}px, ${deltaY}px) rotate(${rotation}deg)`;
+            this.updateSwipeOverlays(deltaX, deltaY);
+        }
+    }
+
+    handleMouseUp(e) {
+        if (!this.isMouseDown) return;
+        this.isMouseDown = false;
+
+        this.cardElement.classList.remove('swiping');
+
+        const deltaX = this.touchCurrentX - this.touchStartX;
+        const deltaY = this.touchCurrentY - this.touchStartY;
+
+        this.hideSwipeOverlays();
+
+        const swipeThreshold = 80;
+
+        if (Math.abs(deltaX) > swipeThreshold || Math.abs(deltaY) > swipeThreshold) {
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                if (deltaX < -swipeThreshold) {
+                    this.animateCardOut('left', () => this.previousCard());
+                } else if (deltaX > swipeThreshold) {
+                    this.animateCardOut('right', () => this.nextCard());
+                }
+            } else {
+                if (deltaY > swipeThreshold) {
+                    this.animateCardOut('down', () => this.addToVocabulary());
+                } else if (deltaY < -swipeThreshold) {
+                    this.animateCardOut('up', () => this.nextCard());
+                }
+            }
+        } else if (!this.isSwiping) {
+            // It was a click, not a swipe
+            return;
+        } else {
+            this.returnCard();
+        }
+
+        this.isSwiping = false;
+    }
+
+    updateSwipeOverlays(deltaX, deltaY) {
+        const threshold = 40;
+        const maxOpacity = 0.8;
+
+        const leftOverlay = document.getElementById('overlay-left');
+        const rightOverlay = document.getElementById('overlay-right');
+        const downOverlay = document.getElementById('overlay-down');
+
+        // Reset all
+        leftOverlay.style.opacity = 0;
+        rightOverlay.style.opacity = 0;
+        downOverlay.style.opacity = 0;
+
+        if (deltaX < -threshold) {
+            leftOverlay.style.opacity = Math.min(Math.abs(deltaX) / 150, maxOpacity);
+        } else if (deltaX > threshold) {
+            rightOverlay.style.opacity = Math.min(deltaX / 150, maxOpacity);
+        }
+
+        if (deltaY > threshold) {
+            downOverlay.style.opacity = Math.min(deltaY / 150, maxOpacity);
+        }
+    }
+
+    hideSwipeOverlays() {
+        const overlays = document.querySelectorAll('.swipe-overlay');
+        overlays.forEach(overlay => {
+            overlay.style.opacity = 0;
+        });
+    }
+
+    animateCardOut(direction, callback) {
+        this.cardElement.classList.add('flying-out');
+
+        let transform;
+        switch (direction) {
+            case 'left':
+                transform = 'translate(-150%, 0) rotate(-30deg)';
+                break;
+            case 'right':
+                transform = 'translate(150%, 0) rotate(30deg)';
+                break;
+            case 'up':
+                transform = 'translate(0, -150%) rotate(0deg)';
+                break;
+            case 'down':
+                transform = 'translate(0, 150%) rotate(0deg)';
+                break;
+        }
+
+        this.cardElement.style.transform = transform;
+        this.cardElement.style.opacity = '0';
+
+        setTimeout(() => {
+            callback();
+            // Reset card position
+            this.cardElement.style.transition = 'none';
+            this.cardElement.style.transform = 'translate(0, 0) rotate(0deg)';
+            this.cardElement.style.opacity = '1';
+            this.cardElement.classList.remove('flying-out');
+
+            // Re-enable transitions
+            setTimeout(() => {
+                this.cardElement.style.transition = '';
+            }, 50);
+        }, 350);
+    }
+
+    returnCard() {
+        this.cardElement.classList.add('returning');
+        this.cardElement.style.transform = 'translate(0, 0) rotate(0deg)';
+
+        setTimeout(() => {
+            this.cardElement.classList.remove('returning');
+        }, 400);
+    }
+
+    handleKeydown(e) {
+        if (this.isLoading) return;
+
+        switch (e.key) {
+            case 'ArrowLeft':
+                e.preventDefault();
+                this.previousCard();
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                this.nextCard();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                this.nextCard();
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                this.addToVocabulary();
+                break;
+            case ' ':
+            case 'Enter':
+                e.preventDefault();
+                this.flipCard();
+                break;
+        }
+    }
+
+    flipCard() {
+        if (this.isLoading) return;
+
+        // Trigger magic reveal animation
+        this.magicReveal.classList.remove('active');
+        void this.magicReveal.offsetWidth; // Force reflow
+        this.magicReveal.classList.add('active');
+
+        // Toggle card state after a small delay for effect
+        setTimeout(() => {
+            this.isFrontVisible = !this.isFrontVisible;
+            this.cardElement.classList.toggle('revealed');
+
+            // Update content visibility
+            if (this.isFrontVisible) {
+                this.showFront();
+            } else {
+                this.showBack();
+            }
+
+            // Update hint text
+            if (this.flipHint) {
+                const hintText = this.flipHint.querySelector('span');
+                if (hintText) {
+                    hintText.textContent = this.isFrontVisible ? '点击翻面' : '点击返回';
+                }
+            }
+        }, 150);
+    }
+
+    showFront() {
+        const card = this.flashcards[this.currentIndex];
+        if (!card) return;
+
+        if (card.imagePath) {
+            this.flashcardImage.src = card.imagePath;
             this.flashcardImage.style.display = 'block';
-            // Hide text if image is present
             this.englishElement.style.display = 'none';
         } else {
             this.flashcardImage.style.display = 'none';
             this.englishElement.style.display = 'block';
         }
-        this.flashcardImageBack.style.display = 'none';
-        // Ensure back text is hidden when showing front
         this.chineseElement.style.display = 'none';
     }
-    
-    showBackImage() {
-        if (this.flashcards[this.currentIndex]?.imagePath) {
-            this.flashcardImageBack.src = this.flashcardImage.src; // Use same image
-            this.flashcardImageBack.style.display = 'block';
-            // Hide text if image is present
-            this.chineseElement.style.display = 'none';
-        } else {
-            this.flashcardImageBack.style.display = 'none';
-            this.chineseElement.style.display = 'block';
-        }
+
+    showBack() {
+        const card = this.flashcards[this.currentIndex];
+        if (!card) return;
+
         this.flashcardImage.style.display = 'none';
-        // Ensure front text is hidden when showing back
         this.englishElement.style.display = 'none';
+        this.chineseElement.style.display = 'block';
     }
-    
+
     nextCard() {
-        if (this.isLoading || this.currentIndex >= this.flashcards.length - 1) return;
-        
+        if (this.isLoading || this.currentIndex >= this.flashcards.length - 1) {
+            if (this.currentIndex >= this.flashcards.length - 1) {
+                this.showToast('已经是最后一张了');
+            }
+            return;
+        }
+
         this.currentIndex++;
         this.resetCardState();
         this.updateDisplay();
     }
-    
+
     previousCard() {
-        if (this.isLoading || this.currentIndex <= 0) return;
-        
+        if (this.isLoading || this.currentIndex <= 0) {
+            if (this.currentIndex <= 0) {
+                this.showToast('已经是第一张了');
+            }
+            return;
+        }
+
         this.currentIndex--;
         this.resetCardState();
         this.updateDisplay();
     }
-    
-    async rateCard(difficulty) {
-        if (this.isLoading || !this.flashcards[this.currentIndex]) return;
-        
+
+    addToVocabulary() {
+        if (this.isLoading) return;
+
         const card = this.flashcards[this.currentIndex];
-        card.difficulty = difficulty;
-        
-        // Save locally first
-        this.saveProgress();
-        
-        // Then attempt to save to backend
-        await this.saveRatingToBackend(card.id, difficulty);
-        
-        // Move to next card after rating
-        setTimeout(() => {
-            this.nextCard();
-        }, 300);
+        if (!card) return;
+
+        // Check if already in vocabulary list
+        if (this.vocabularyList.find(v => v.id === card.id)) {
+            this.showToast('该单词已在生词本中');
+        } else {
+            this.vocabularyList.push({
+                id: card.id,
+                english: card.english,
+                chinese: card.chinese,
+                addedAt: Date.now()
+            });
+            this.saveVocabularyList();
+            this.updateVocabIndicator();
+            this.showToast(`"${card.english}" 已加入生词本`);
+        }
+
+        // Move to next card
+        if (this.currentIndex < this.flashcards.length - 1) {
+            setTimeout(() => {
+                this.currentIndex++;
+                this.resetCardState();
+                this.updateDisplay();
+            }, 300);
+        }
     }
-    
+
     resetCardState() {
-        this.cardElement.classList.remove('flipped');
+        this.cardElement.classList.remove('revealed');
         this.isFrontVisible = true;
+
+        // Reset hint text
+        if (this.flipHint) {
+            const hintText = this.flipHint.querySelector('span');
+            if (hintText) {
+                hintText.textContent = '点击翻面';
+            }
+        }
     }
-    
+
     updateDisplay() {
         if (this.flashcards[this.currentIndex]) {
             const card = this.flashcards[this.currentIndex];
-            
+
             // Update text content
             this.englishElement.textContent = card.english;
             this.chineseElement.textContent = card.chinese;
-            
+
             // Show appropriate content based on current card side
             if (this.isFrontVisible) {
-                this.showFrontImage();
+                this.showFront();
             } else {
-                this.showBackImage();
+                this.showBack();
             }
-            
+
             // Update progress bar
             const progressPercent = ((this.currentIndex + 1) / this.flashcards.length) * 100;
             this.progressFill.style.width = `${progressPercent}%`;
             this.progressText.textContent = `${this.currentIndex + 1}/${this.flashcards.length}`;
         }
+
+        this.updateVocabIndicator();
     }
-    
+
+    updateVocabIndicator() {
+        if (this.vocabularyList.length > 0) {
+            this.vocabIndicator.style.display = 'block';
+            this.vocabCount.textContent = this.vocabularyList.length;
+        } else {
+            this.vocabIndicator.style.display = 'none';
+        }
+    }
+
     saveProgress() {
         const progressData = {
             currentIndex: this.currentIndex,
             flashcards: this.flashcards,
             timestamp: Date.now()
         };
-        
+
         localStorage.setItem('oxfordFlashcardsProgress', JSON.stringify(progressData));
     }
-    
+
     loadProgress() {
         const savedData = localStorage.getItem('oxfordFlashcardsProgress');
         if (savedData) {
             try {
                 const progressData = JSON.parse(savedData);
-                
-                // Verify data integrity
-                if (Array.isArray(progressData.flashcards) && 
-                    progressData.flashcards.length > 0) {
-                    
-                    // Update our flashcards with saved difficulty ratings
+
+                if (Array.isArray(progressData.flashcards) && progressData.flashcards.length > 0) {
                     for (let i = 0; i < this.flashcards.length; i++) {
                         if (progressData.flashcards[i]) {
-                            // Find matching card by ID if possible, otherwise by index
                             const savedCardIdx = this.flashcards.findIndex(c => c.id === progressData.flashcards[i].id);
                             if (savedCardIdx !== -1) {
                                 this.flashcards[savedCardIdx].difficulty = progressData.flashcards[i].difficulty || 0;
                             }
                         }
                     }
-                    
-                    // Set current index if valid
-                    if (typeof progressData.currentIndex === 'number' && 
-                        progressData.currentIndex >= 0 && 
+
+                    if (typeof progressData.currentIndex === 'number' &&
+                        progressData.currentIndex >= 0 &&
                         progressData.currentIndex < this.flashcards.length) {
-                        
                         this.currentIndex = progressData.currentIndex;
                     }
                 }
             } catch (e) {
                 console.error('Error loading progress:', e);
-                // If there's an error, we'll start fresh
             }
         }
     }
-    
-    async resetProgress() {
-        if (confirm('Are you sure you want to reset all progress?')) {
+
+    saveVocabularyList() {
+        localStorage.setItem('oxfordFlashcardsVocabulary', JSON.stringify(this.vocabularyList));
+    }
+
+    loadVocabularyList() {
+        const savedData = localStorage.getItem('oxfordFlashcardsVocabulary');
+        if (savedData) {
             try {
-                // First try to reset via backend
-                const response = await fetch('http://localhost:9876/api/progress/reset', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log(result.message);
-                }
-            } catch (error) {
-                console.error('Error resetting progress on backend:', error);
+                this.vocabularyList = JSON.parse(savedData);
+            } catch (e) {
+                console.error('Error loading vocabulary list:', e);
+                this.vocabularyList = [];
             }
-            
-            // Reset local data anyway
-            this.flashcards.forEach(card => {
-                card.difficulty = 0;
-            });
-            
-            this.currentIndex = 0;
-            this.saveProgress();
-            this.resetCardState();
-            this.updateDisplay();
         }
     }
-    
-    async saveRatingToBackend(cardId, rating) {
-        try {
-            const response = await fetch(`http://localhost:9876/api/flashcards/${cardId}/rate`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ rating })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            console.log('Rating saved successfully:', result);
-            return result;
-        } catch (error) {
-            console.error('Error saving rating to backend:', error);
-            // Still update local data even if backend fails
-            return null;
+
+    getVocabularyList() {
+        return this.vocabularyList;
+    }
+
+    clearVocabularyList() {
+        if (confirm('确定要清空生词本吗？')) {
+            this.vocabularyList = [];
+            this.saveVocabularyList();
+            this.updateVocabIndicator();
+            this.showToast('生词本已清空');
         }
-    }
-    
-    // Method to get cards based on difficulty (for spaced repetition)
-    getCardsForPractice() {
-        // Filter cards by difficulty level (0 = again, 1 = hard, 2 = good, 3 = easy)
-        // Cards rated as "again" or "hard" should appear more frequently
-        return this.flashcards.filter(card => card.difficulty < 2);
-    }
-    
-    // Method to get learning statistics
-    getLearningStats() {
-        const totalCards = this.flashcards.length;
-        const masteredCards = this.flashcards.filter(card => card.difficulty >= 3).length;
-        const learningCards = this.flashcards.filter(card => card.difficulty > 0 && card.difficulty < 3).length;
-        const newCards = this.flashcards.filter(card => card.difficulty === 0).length;
-        
-        return {
-            totalCards,
-            masteredCards,
-            learningCards,
-            newCards,
-            masteryPercentage: totalCards > 0 ? Math.round((masteredCards / totalCards) * 100) : 0
-        };
     }
 }
 
 // Initialize the game when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     window.game = new FlashcardGame();
-    
-    // Add a small delay to ensure everything is loaded
+
     setTimeout(() => {
         console.log('Oxford Flashcards Game initialized!');
-        console.log('Features ready: Card flipping, navigation, progress tracking, image support');
+        console.log('Gesture controls: Swipe left=previous, Swipe right/up=next, Swipe down=add to vocabulary');
     }, 1000);
 });
 

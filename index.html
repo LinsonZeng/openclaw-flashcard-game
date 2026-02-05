@@ -2,53 +2,115 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Oxford English Flashcards</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Oxford English Flashcards</h1>
-            <div class="progress-container">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
-                <span id="progressText">0/0</span>
+    <div class="app-container">
+        <!-- Background gradient overlay -->
+        <div class="gradient-bg"></div>
+        
+        <!-- Top navigation -->
+        <nav class="top-nav">
+            <button id="backBtn" class="nav-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </button>
+            <button id="closeBtn" class="nav-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </nav>
+        
+        <!-- Progress indicator -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
             </div>
-        </header>
-
-        <main class="game-area">
-            <div class="flashcard-container">
-                <div class="flashcard" id="flashcard">
-                    <div class="flashcard-front" id="cardFront">
-                        <img id="flashcardImage" src="" alt="Flashcard Image" class="flashcard-image" style="display:none;">
-                        <div class="word" id="englishWord">Loading...</div>
-                        <div class="hint">Tap to flip</div>
-                    </div>
-                    <div class="flashcard-back" id="cardBack">
-                        <img id="flashcardImageBack" src="" alt="Flashcard Image" class="flashcard-image" style="display:none;">
-                        <div class="word" id="chineseMeaning">加载中...</div>
-                        <div class="hint">Tap to flip</div>
+            <span id="progressText">0/0</span>
+        </div>
+        
+        <!-- Main card area -->
+        <main class="card-area">
+            <!-- Left swipe hint -->
+            <div class="swipe-hint hint-left">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                <span>向左划<br>返回</span>
+            </div>
+            
+            <!-- Card stack container -->
+            <div class="card-stack-container">
+                <div class="card-stack" id="cardStack">
+                    <!-- Background stack cards for depth effect -->
+                    <div class="stack-card stack-4"></div>
+                    <div class="stack-card stack-3"></div>
+                    <div class="stack-card stack-2"></div>
+                    <div class="stack-card stack-1"></div>
+                    
+                    <!-- Main active card -->
+                    <div class="flashcard" id="flashcard">
+                        <div class="card-content" id="cardContent">
+                            <!-- Card icon -->
+                            <div class="card-icon">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M30 10C25 15 15 20 10 25C15 30 25 35 30 40C35 35 45 30 50 25C45 20 35 15 30 10Z"/>
+                                    <path d="M20 35V50L30 45L40 50V35"/>
+                                </svg>
+                            </div>
+                            
+                            <!-- Word display -->
+                            <div class="word" id="englishWord">Loading...</div>
+                            <div class="word back-word" id="chineseMeaning" style="display:none;">加载中...</div>
+                            
+                            <!-- Hidden image elements for compatibility -->
+                            <img id="flashcardImage" src="" alt="" class="flashcard-image" style="display:none;">
+                            <img id="flashcardImageBack" src="" alt="" class="flashcard-image" style="display:none;">
+                            
+                            <!-- Flip hint -->
+                            <div class="flip-hint" id="flipHint">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                    <path d="M3 3v5h5"/>
+                                </svg>
+                                <span>点击翻面</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Magic reveal overlay -->
+                        <div class="magic-reveal" id="magicReveal"></div>
                     </div>
                 </div>
             </div>
-
-            <div class="controls">
-                <button id="prevBtn" class="nav-btn">← Previous</button>
-                <div class="action-buttons">
-                    <button id="againBtn" class="action-btn again">Again</button>
-                    <button id="hardBtn" class="action-btn hard">Hard</button>
-                    <button id="goodBtn" class="action-btn good">Good</button>
-                    <button id="easyBtn" class="action-btn easy">Easy</button>
-                </div>
-                <button id="nextBtn" class="nav-btn">Next →</button>
+            
+            <!-- Right swipe hint -->
+            <div class="swipe-hint hint-right">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+                <span>向右划<br>下一张</span>
             </div>
         </main>
-
-        <footer>
-            <button id="resetBtn">Reset Progress</button>
-        </footer>
+        
+        <!-- Bottom discard hint -->
+        <div class="discard-hint" id="discardHint">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 8v13H3V8"/>
+                <path d="M1 3h22v5H1z"/>
+                <path d="M10 12h4"/>
+            </svg>
+            <span>向下划加入生词本</span>
+        </div>
+        
+        <!-- Vocabulary list indicator -->
+        <div class="vocab-indicator" id="vocabIndicator" style="display:none;">
+            <span id="vocabCount">0</span> 个生词
+        </div>
     </div>
 
     <script src="app.js"></script>
