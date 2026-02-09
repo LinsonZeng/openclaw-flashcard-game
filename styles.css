@@ -216,9 +216,10 @@ body {
     position: absolute;
     width: 100%;
     height: 100%;
-    background: linear-gradient(145deg, #f5f5f5 0%, #e8e8e8 100%);
-    border-radius: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(145deg, rgba(45, 45, 70, 0.8) 0%, rgba(30, 30, 50, 0.9) 100%);
+    border-radius: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .stack-1 {
@@ -248,17 +249,53 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(145deg, #ffffff 0%, #f8f8f8 100%);
-    border-radius: 20px;
+    background: linear-gradient(145deg,
+            rgba(50, 50, 80, 0.85) 0%,
+            rgba(35, 35, 60, 0.95) 50%,
+            rgba(25, 25, 45, 0.98) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
     box-shadow:
-        0 15px 35px rgba(0, 0, 0, 0.15),
-        0 5px 15px rgba(0, 0, 0, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        0 20px 50px rgba(0, 0, 0, 0.4),
+        0 8px 25px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     cursor: pointer;
     transition: transform 0.1s ease-out;
     will-change: transform;
     z-index: 10;
     overflow: hidden;
+}
+
+/* Subtle gradient border effect */
+.flashcard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(168, 237, 234, 0.4) 30%,
+            rgba(254, 214, 227, 0.4) 70%,
+            transparent 100%);
+    opacity: 0.8;
+}
+
+/* Inner glow effect */
+.flashcard::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 24px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(168, 237, 234, 0.08) 0%, transparent 60%);
+    pointer-events: none;
 }
 
 .flashcard.swiping {
@@ -287,23 +324,30 @@ body {
 
 .card-icon {
     margin-bottom: 20px;
-    color: #888;
-    opacity: 0.6;
+    color: rgba(168, 237, 234, 0.6);
+    opacity: 0.8;
+    filter: drop-shadow(0 2px 8px rgba(168, 237, 234, 0.3));
 }
 
 .word {
-    font-size: 2rem;
+    font-size: 2.2rem;
     font-weight: 700;
-    color: #2c3e50;
+    color: #ffffff;
     text-align: center;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     line-height: 1.3;
     transition: opacity 0.3s ease, transform 0.3s ease;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .back-word {
-    font-size: 1.5rem;
-    color: #764ba2;
+    font-size: 1.6rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
 }
 
 .flashcard-image {
@@ -320,7 +364,7 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: #aaa;
+    color: rgba(255, 255, 255, 0.5);
     font-size: 0.85rem;
     transition: opacity 0.3s ease;
 }
@@ -353,7 +397,7 @@ body {
     width: 0;
     height: 0;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(118, 75, 162, 0.3) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(168, 237, 234, 0.4) 0%, transparent 70%);
     transform: translate(-50%, -50%);
     pointer-events: none;
     opacity: 0;
@@ -460,15 +504,15 @@ body {
 }
 
 .swipe-overlay.left {
-    background: linear-gradient(90deg, rgba(255, 107, 107, 0.3) 0%, transparent 50%);
+    background: linear-gradient(90deg, rgba(255, 107, 107, 0.4) 0%, transparent 50%);
 }
 
 .swipe-overlay.right {
-    background: linear-gradient(-90deg, rgba(107, 255, 148, 0.3) 0%, transparent 50%);
+    background: linear-gradient(-90deg, rgba(74, 222, 128, 0.4) 0%, transparent 50%);
 }
 
 .swipe-overlay.down {
-    background: linear-gradient(0deg, rgba(255, 193, 7, 0.3) 0%, transparent 50%);
+    background: linear-gradient(0deg, rgba(251, 191, 36, 0.4) 0%, transparent 50%);
 }
 
 /* Toast notification */

@@ -9,6 +9,10 @@ class FlashcardGame {
         this.isLoading = false;
         this.vocabularyList = []; // 生词列表
 
+        // Level mode properties
+        this.currentLevel = null;
+        this.isLevelMode = false;
+
         // Touch tracking
         this.touchStartX = 0;
         this.touchStartY = 0;
@@ -18,13 +22,106 @@ class FlashcardGame {
 
         this.initializeElements();
         this.loadVocabularyList();
-        this.fetchFlashcardsFromBackend()
-            .then(() => {
-                this.loadProgress();
-                this.updateDisplay();
-            });
+
+        // Check if we're in level mode
+        this.checkLevelMode();
+
+        if (this.isLevelMode) {
+            // Load from level config
+            this.loadLevelData();
+        } else {
+            // Original backend fetch mode
+            this.fetchFlashcardsFromBackend()
+                .then(() => {
+                    this.loadProgress();
+                    this.updateDisplay();
+                });
+        }
+
         this.bindEvents();
         this.initializePrevButton();
+    }
+
+    // Check URL for level parameter
+    checkLevelMode() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const levelId = urlParams.get('level');
+
+        if (levelId && typeof LEVELS_CONFIG !== 'undefined') {
+            this.currentLevel = parseInt(levelId, 10);
+            this.isLevelMode = true;
+        } else if (typeof LEVELS_CONFIG !== 'undefined') {
+            // No level specified, redirect to level selection page
+            window.location.href = 'levels.html';
+            return;
+        }
+    }
+
+    // Load flashcards from level config
+    loadLevelData() {
+        if (!this.currentLevel || typeof LEVELS_CONFIG === 'undefined') {
+            console.error('Level config not available');
+            this.createSampleFlashcards();
+            this.updateDisplay();
+            return;
+        }
+
+        const level = LEVELS_CONFIG.getLevel(this.currentLevel);
+        if (!level) {
+            console.error(`Level ${this.currentLevel} not found`);
+            this.createSampleFlashcards();
+            this.updateDisplay();
+            return;
+        }
+
+        // Convert level cards to flashcard format
+        this.flashcards = level.cards.map(card => ({
+            id: card.id,
+            english: card.english,
+            chinese: card.chinese,
+            imagePath: '',
+            difficulty: 0
+        }));
+
+        // Load level progress
+        const progress = LEVELS_CONFIG.getLevelProgress(this.currentLevel);
+        this.currentIndex = progress.currentIndex || 0;
+
+        // Update level info display
+        this.updateLevelInfo(level);
+
+        console.log(`Loaded Level ${this.currentLevel}: "${level.name}" with ${this.flashcards.length} cards`);
+        this.setLoadingState(false);
+        this.updateDisplay();
+    }
+
+    // Update level info in the UI
+    updateLevelInfo(level) {
+        // Show the level info bar
+        const levelInfoBar = document.getElementById('levelInfoBar');
+        if (levelInfoBar) {
+            levelInfoBar.classList.add('visible');
+        }
+
+        // Update title if element exists
+        const levelTitle = document.getElementById('levelTitle');
+        if (levelTitle) {
+            levelTitle.textContent = level.name;
+        }
+
+        // Update theme if element exists
+        const levelTheme = document.getElementById('levelTheme');
+        if (levelTheme) {
+            levelTheme.textContent = level.theme;
+        }
+    }
+
+    // Save level progress
+    saveLevelProgress() {
+        if (this.isLevelMode && this.currentLevel && typeof LEVELS_CONFIG !== 'undefined') {
+            const completed = this.currentIndex >= this.flashcards.length - 1;
+            LEVELS_CONFIG.saveLevelProgress(this.currentLevel, this.currentIndex, completed);
+        }
     }
 
     initializeElements() {
@@ -508,8 +605,13 @@ class FlashcardGame {
     }
 
     nextCard() {
-        if (this.isLoading || this.currentIndex >= this.flashcards.length - 1) {
-            if (this.currentIndex >= this.flashcards.length - 1) {
+        if (this.isLoading) return;
+
+        if (this.currentIndex >= this.flashcards.length - 1) {
+            // Check if we're in level mode and show completion
+            if (this.isLevelMode) {
+                this.showLevelComplete();
+            } else {
                 this.showToast('已经是最后一张了');
             }
             return;
@@ -518,6 +620,71 @@ class FlashcardGame {
         this.currentIndex++;
         this.resetCardState();
         this.updateDisplay();
+
+        // Save progress in level mode
+        this.saveLevelProgress();
+    }
+
+    // Show level completion modal
+    showLevelComplete() {
+        // Mark level as completed
+        if (this.isLevelMode && this.currentLevel && typeof LEVELS_CONFIG !== 'undefined') {
+            LEVELS_CONFIG.saveLevelProgress(this.currentLevel, this.flashcards.length - 1, true);
+        }
+
+        // Create completion modal
+        const modal = document.createElement('div');
+        modal.className = 'level-complete-modal';
+        modal.id = 'levelCompleteModal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="celebration-emoji">🎉</div>
+                <h2>恭喜完成！</h2>
+                <p>你已经完成了本关卡的所有单词！</p>
+                <div class="modal-stats">
+                    <div class="stat">
+                        <span class="stat-value">${this.flashcards.length}</span>
+                        <span class="stat-label">学习单词</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">${this.vocabularyList.filter(v => this.flashcards.some(f => f.id === v.id)).length}</span>
+                        <span class="stat-label">加入生词本</span>
+                    </div>
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn-secondary" id="restartLevelBtn">重新学习</button>
+                    <button class="btn-primary" id="nextLevelBtn">下一关</button>
+                    <button class="btn-outline" id="backToLevelsBtn">返回关卡</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Add event listeners
+        document.getElementById('restartLevelBtn').addEventListener('click', () => {
+            this.currentIndex = 0;
+            this.resetCardState();
+            this.updateDisplay();
+            modal.remove();
+        });
+
+        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+            const nextLevel = this.currentLevel + 1;
+            if (typeof LEVELS_CONFIG !== 'undefined' && LEVELS_CONFIG.getLevel(nextLevel)) {
+                window.location.href = `index.html?level=${nextLevel}`;
+            } else {
+                this.showToast('已经是最后一关了！');
+                modal.remove();
+            }
+        });
+
+        document.getElementById('backToLevelsBtn').addEventListener('click', () => {
+            window.location.href = 'levels.html';
+        });
+
+        // Animate in
+        setTimeout(() => modal.classList.add('show'), 10);
     }
 
     previousCard() {
@@ -656,15 +823,14 @@ class FlashcardGame {
                 position: absolute;
                 width: 100%;
                 height: 100%;
-                background: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
-                border-radius: 20px;
-                box-shadow: 0 ${3 + i}px ${10 + i * 3}px rgba(0, 0, 0, ${0.1 + i * 0.02}),
-                            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+                background: linear-gradient(145deg, rgba(45, 45, 70, 0.7) 0%, rgba(30, 30, 50, 0.8) 100%);
+                border-radius: 24px;
+                box-shadow: 0 ${3 + i}px ${10 + i * 3}px rgba(0, 0, 0, ${0.2 + i * 0.03}),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.1);
                 transform: translateY(${offset}px) scale(${scale});
                 opacity: ${opacity};
                 z-index: ${-i};
-                border: 1px solid rgba(200, 200, 200, 0.3);
-                border-bottom: 2px solid rgba(150, 150, 150, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.08);
             `;
 
             stackCardsContainer.appendChild(stackCard);
@@ -733,12 +899,25 @@ class FlashcardGame {
             // Update progress bar
             const progressPercent = ((this.currentIndex + 1) / this.flashcards.length) * 100;
             this.progressFill.style.width = `${progressPercent}%`;
-            this.progressText.textContent = `${this.currentIndex + 1}/${this.flashcards.length}`;
+
+            // Show level info if in level mode
+            if (this.isLevelMode && this.currentLevel) {
+                const level = typeof LEVELS_CONFIG !== 'undefined' ? LEVELS_CONFIG.getLevel(this.currentLevel) : null;
+                const levelName = level ? `L${this.currentLevel}` : '';
+                this.progressText.textContent = `${levelName} ${this.currentIndex + 1}/${this.flashcards.length}`;
+            } else {
+                this.progressText.textContent = `${this.currentIndex + 1}/${this.flashcards.length}`;
+            }
         }
 
         this.updateVocabIndicator();
         this.updatePrevButtonVisibility();
         this.updateCardStackVisual();
+
+        // Save level progress
+        if (this.isLevelMode) {
+            this.saveLevelProgress();
+        }
     }
 
     updateVocabIndicator() {
